@@ -7,7 +7,7 @@ time=90
 bwnet=1.5
 # TODO: If you want the RTT to be 20ms what should the delay on each
 # link be?  Set this value correctly.
-delay=
+delay=20
 
 iperf_port=5001
 
@@ -18,6 +18,7 @@ for qsize in 20 100; do
     python3 bufferbloat.py --delay 10 \
                 --dir ./ \
                 --nflows 1 \
+                --maxq $qsize
                 --n 2 \
 
     # TODO: Ensure the input file names match the ones you use in

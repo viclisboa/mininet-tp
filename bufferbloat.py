@@ -103,8 +103,8 @@ def start_ping(net):
     h1.popen("ping -c 10 -i 0.1 10.0.0.2' > ping.txt",shell=true)
     h1.sendCmd('ping -c 10 -i 0.1 10.0.0.2')
     result = h1.waitOutput()
-    print "Ping result:"
-    print result.strip()
+    print("Ping result:")
+    print(result.strip())
     pass
 
 def start_webserver(net):
@@ -117,7 +117,7 @@ def bufferbloat():
     if not os.path.exists(args.dir):
         os.makedirs(args.dir)
     os.system("sysctl -w net.ipv4.tcp_congestion_control=%s" % args.cong)
-    topo = BBTopo()
+    topo = BBTopo(maxq=args.maxq)
     net = Mininet(topo=topo, host=CPULimitedHost, link=TCLink)
     net.start()
     # This dumps the topology and how nodes are interconnected through
@@ -131,7 +131,7 @@ def bufferbloat():
     # interface?  The interface numbering starts with 1 and increases.
     # Depending on the order you add links to your network, this
     # number may be 1 or 2.  Ensure you use the correct number.
-    qmon = start_qmon(iface='s0-eth2',
+    qmon = start_qmon(iface='s0-eth1',
                       outfile='%s/q.txt' % (args.dir))
 
     # TODO: Start iperf, webservers, etc.
