@@ -109,7 +109,7 @@ def start_ping(net):
 
 def start_webserver(net):
     h1 = net.get('h1')
-    proc = h1.popen("python webserver.py", shell=True)
+    proc = h1.popen("python3 webserver3.py", shell=True)
     sleep(1)
     return [proc]
 
@@ -172,7 +172,7 @@ def bufferbloat():
     net.stop()
     # Ensure that all processes you create within Mininet are killed.
     # Sometimes they require manual killing.
-    Popen("pgrep -f webserver.py | xargs kill -9", shell=True).wait()
+    Popen("pgrep -f webserver3.py | xargs kill -9", shell=True).wait()
 
 if __name__ == "__main__":
     bufferbloat()
