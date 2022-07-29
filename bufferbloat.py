@@ -70,9 +70,9 @@ class BBTopo(Topo):
         switch = self.addSwitch('s0')
     
         self.addLink('h1', 's0', bw=1000,
-                      max_queue_size=100 )
+                      max_queue_size=maxq )
         self.addLink('h2', 's0', bw=1.5,
-                      max_queue_size=100 )              
+                      max_queue_size=maxq )              
 
 # Simple wrappers around monitoring utilities.  You are welcome to
 # contribute neatly written (using classes) monitoring scripts for
