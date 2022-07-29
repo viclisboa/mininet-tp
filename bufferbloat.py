@@ -99,7 +99,9 @@ def start_qmon(iface, interval_sec=0.1, outfile="q.txt"):
     return monitor
 
 def start_ping(source_host, target_host, dir="./"):
-    command = f"ping -c 10 -i 0.1 {target_host.IP()} > {dir}/ping.txt"
+    interval = 0.1
+    count = int(args.time / interval)
+    command = f"ping -c {count} -i {interval} {target_host.IP()} > {dir}/ping.txt"
     print("Starting ping...")
     print(f"  {source_host.name}: {command}")
     source_host.popen(command, shell=True)
@@ -157,6 +159,7 @@ def bufferbloat():
     start_time = time()
     while True:
         # do the measurement (say) 3 times.
+        sleep(5)
         now = time()
         elapsed_time = now - start_time
         if elapsed_time >= args.time:
@@ -166,7 +169,6 @@ def bufferbloat():
         result = h2.waitOutput()
         print("Curl result:")
         print(result.strip())
-        sleep(5)
 
     # TODO: compute average (and standard deviation) of the fetch
     # times.  You don't need to plot them.  Just note it in your
