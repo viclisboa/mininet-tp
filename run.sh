@@ -19,6 +19,8 @@ for qsize in 20 100; do
                 --dir ./ \
                 --nflows 1 \
                 --maxq $qsize
+                --bw-net 1500
+                --delay $delay
                 --n 2 \
 
     # TODO: Ensure the input file names match the ones you use in
