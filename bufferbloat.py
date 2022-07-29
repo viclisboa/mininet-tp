@@ -78,16 +78,19 @@ class BBTopo(Topo):
 # contribute neatly written (using classes) monitoring scripts for
 # Mininet!
 
-def start_iperf(net):
-    h1 = net.get('h1')
-    h2 = net.get('h2')
+def start_iperf(client_host, server_host):
     print("Starting iperf server...")
     # For those who are curious about the -w 16m parameter, it ensures
     # that the TCP flow is not receiver window limited.  If it is,
     # there is a chance that the router buffer may not get filled up.
-    server = h2.popen("iperf -s -w 16m")
+    server_command = "iperf -s -w 16m"
+    client_command = f"iperf -c {server_host.IP()} -p 5001 -t 3600 -i 1 -w 16m -Z reno"
 
-    client = h1.popen("iperf -c 10.0.0.2 -p 5001 -t 3600 -i 1 -w 16m -Z reno")
+    print(f"  {server_host.name}: {server_command}")
+    print(f"  {client_host.name}: {client_command}")
+
+    server = server_host.popen(server_command)
+    client = client_host.popen(client_command)
 
 def start_qmon(iface, interval_sec=0.1, outfile="q.txt"):
     monitor = Process(target=monitor_qlen,
@@ -95,24 +98,21 @@ def start_qmon(iface, interval_sec=0.1, outfile="q.txt"):
     monitor.start()
     return monitor
 
-def start_ping(net, dir="./"):
-    print("Starting ping....")
-    h1 = net.getNodeByName('h1')
-    h1.popen("ping -c 10 -i 0.1 10.0.0.2 > %s/ping.txt" % (dir),shell=True)
-    #h1.sendCmd('ping -c 10 -i 0.1 10.0.0.2')
-    #result = h1.waitOutput()
-    #print("Ping result:")
-    #print(result.strip())
-    pass
+def start_ping(source_host, target_host, dir="./"):
+    command = f"ping -c 10 -i 0.1 {target_host.IP()} > {dir}/ping.txt"
+    print("Starting ping...")
+    print(f"  {source_host.name}: {command}")
+    source_host.popen(command, shell=True)
 
-def start_webserver(net):
-    h1 = net.get('h1')
-    h1.cmd('cd ./http/; nohup python3 ./webserver3.py &')
-    #proc = h1.popen("python3 webserver3.py", shell=True)
+def start_webserver(host):
+    command = 'cd ./http/; nohup python3 ./webserver3.py &'
+    print("Starting webserver...")
+    print(f"  {host.name}: {command}")
+    host.cmd(command)
     sleep(1)
-    #return [proc]
 
 def bufferbloat():
+    os.system("mn -c")
     if not os.path.exists(args.dir):
         os.makedirs(args.dir)
     os.system("sysctl -w net.ipv4.tcp_congestion_control=%s" % args.cong)
@@ -125,6 +125,11 @@ def bufferbloat():
     # This performs a basic all pairs ping test.
     net.pingAll()
 
+    h1 = net.get('h1')
+    h2 = net.get('h2')
+    print("h1 IP:", h1.IP())
+    print("h2 IP:", h2.IP())
+
     # TODO: Start monitoring the queue sizes.  Since the switch I
     # created is "s0", I monitor one of the interfaces.  Which
     # interface?  The interface numbering starts with 1 and increases.
@@ -135,9 +140,9 @@ def bufferbloat():
                       outfile='%s/q.txt' % (args.dir))
 
     # TODO: Start iperf, webservers, etc.
-    start_webserver(net)
-    start_iperf(net)
-    start_ping(net,args.dir)
+    start_webserver(host=h1)
+    start_iperf(server_host=h2, client_host=h1)
+    start_ping(source_host=h1, target_host=h2, dir=args.dir)
 
     # TODO: measure the time it takes to complete webpage transfer
     # from h1 to h2 (say) 3 times.  Hint: check what the following
@@ -150,14 +155,14 @@ def bufferbloat():
     # Hint: have a separate function to do this and you may find the
     # loop below useful.
     start_time = time()
-    while True:
+    while False:
         # do the measurement (say) 3 times.
-        sleep(5)
         now = time()
-        delta = now - start_time
-        if delta > args.time:
+        elapsed_time = now - start_time
+        if elapsed_time >= args.time:
             break
-        print("%.1fs left..." % (args.time - delta))
+        print("%.1fs left..." % (args.time - elapsed_time))
+        sleep(5)
 
     # TODO: compute average (and standard deviation) of the fetch
     # times.  You don't need to plot them.  Just note it in your
