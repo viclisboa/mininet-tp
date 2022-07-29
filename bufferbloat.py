@@ -100,7 +100,7 @@ def start_qmon(iface, interval_sec=0.1, outfile="q.txt"):
 
 def start_ping(net):
     h1 = net.getNodeByName('h1')
-    h1.popen("ping -c 10 -i 0.1 10.0.0.2' > ping.txt",shell=true)
+    h1.popen("ping -c 10 -i 0.1 10.0.0.2' > ping.txt",shell=True)
     h1.sendCmd('ping -c 10 -i 0.1 10.0.0.2')
     result = h1.waitOutput()
     print("Ping result:")
