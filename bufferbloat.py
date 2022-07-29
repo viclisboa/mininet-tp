@@ -155,13 +155,17 @@ def bufferbloat():
     # Hint: have a separate function to do this and you may find the
     # loop below useful.
     start_time = time()
-    while False:
+    while True:
         # do the measurement (say) 3 times.
         now = time()
         elapsed_time = now - start_time
         if elapsed_time >= args.time:
             break
         print("%.1fs left..." % (args.time - elapsed_time))
+        h2.sendCmd('curl -o /dev/null -s -w %{time_total} 10.0.0.1')
+        result = h2.waitOutput()
+        print("Curl result:")
+        print(result.strip())
         sleep(5)
 
     # TODO: compute average (and standard deviation) of the fetch
@@ -171,7 +175,7 @@ def bufferbloat():
     # Hint: The command below invokes a CLI which you can use to
     # debug.  It allows you to run arbitrary commands inside your
     # emulated hosts h1 and h2.
-    CLI(net)
+    #CLI(net)
 
     qmon.terminate()
     net.stop()

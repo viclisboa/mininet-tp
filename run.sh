@@ -20,7 +20,8 @@ for qsize in 20 100; do
                 --dir $dir \
                 --maxq $qsize \
                 --bw-net 1500 \
-                --delay $delay
+                --delay $delay \
+                --time 20 \
 
     # TODO: Ensure the input file names match the ones you use in
     # bufferbloat.py script.  Also ensure the plot file names match
