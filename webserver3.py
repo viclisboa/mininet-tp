@@ -3,7 +3,7 @@ import socketserver
 
 PORT = 80
 
-class Handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
+class Handler(http.server.SimpleHTTPRequestHandler):
     # Disable logging DNS lookups
     def address_string(self):
         return str(self.client_address[0])

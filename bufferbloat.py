@@ -87,9 +87,6 @@ def start_iperf(net):
     # there is a chance that the router buffer may not get filled up.
     server = h2.popen("iperf -s -w 16m")
 
-    # TODO: Start the iperf client on h1.  Ensure that you create a
-    # long lived TCP flow.
-    # client = ... 
     client = h1.popen("iperf -c 10.0.0.2 -p 5001 -t 3600 -i 1 -w 16m -Z reno")
 
 def start_qmon(iface, interval_sec=0.1, outfile="q.txt"):
@@ -98,20 +95,22 @@ def start_qmon(iface, interval_sec=0.1, outfile="q.txt"):
     monitor.start()
     return monitor
 
-def start_ping(net):
+def start_ping(net, dir="./"):
+    print("Starting ping....")
     h1 = net.getNodeByName('h1')
-    h1.popen("ping -c 10 -i 0.1 10.0.0.2' > ping.txt",shell=True)
-    h1.sendCmd('ping -c 10 -i 0.1 10.0.0.2')
-    result = h1.waitOutput()
-    print("Ping result:")
-    print(result.strip())
+    h1.popen("ping -c 10 -i 0.1 10.0.0.2 > %s/ping.txt" % (dir),shell=True)
+    #h1.sendCmd('ping -c 10 -i 0.1 10.0.0.2')
+    #result = h1.waitOutput()
+    #print("Ping result:")
+    #print(result.strip())
     pass
 
 def start_webserver(net):
     h1 = net.get('h1')
-    proc = h1.popen("python3 webserver3.py", shell=True)
+    h1.cmd('cd ./http/; nohup python3 ./webserver3.py &')
+    #proc = h1.popen("python3 webserver3.py", shell=True)
     sleep(1)
-    return [proc]
+    #return [proc]
 
 def bufferbloat():
     if not os.path.exists(args.dir):
@@ -131,13 +130,14 @@ def bufferbloat():
     # interface?  The interface numbering starts with 1 and increases.
     # Depending on the order you add links to your network, this
     # number may be 1 or 2.  Ensure you use the correct number.
-    qmon = start_qmon(iface='s0-eth1',
+    #s0-eth2
+    qmon = start_qmon(iface='s0-eth2',
                       outfile='%s/q.txt' % (args.dir))
 
     # TODO: Start iperf, webservers, etc.
     start_webserver(net)
     start_iperf(net)
-    start_ping(net)
+    start_ping(net,args.dir)
 
     # TODO: measure the time it takes to complete webpage transfer
     # from h1 to h2 (say) 3 times.  Hint: check what the following

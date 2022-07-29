@@ -12,11 +12,12 @@ delay=20
 iperf_port=5001
 
 for qsize in 20 100; do
+    mn -c
     dir=bb-q$qsize
 
     # TODO: Run bufferbloat.py here...
     python3 bufferbloat.py --delay 10 \
-                --dir ./ \
+                --dir $dir \
                 --maxq $qsize \
                 --bw-net 1500 \
                 --delay $delay \
