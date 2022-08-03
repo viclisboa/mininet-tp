@@ -47,6 +47,11 @@ parser.add_argument('--maxq',
                     help="Max buffer size of network interface in packets",
                     default=100)
 
+parser.add_argument('--buffer-size',
+                    type=str,
+                    help="Socket buffer size",
+                    default="16m")
+
 # Linux uses CUBIC-TCP by default that doesn't have the usual sawtooth
 # behaviour.  For those who are curious, invoke this script with
 # --cong cubic and see what happens...
@@ -68,11 +73,19 @@ class BBTopo(Topo):
         # Here I have created a switch.  If you change its name, its
         # interface names will change from s0-eth1 to newname-eth1.
         switch = self.addSwitch('s0')
-    
-        self.addLink('h1', 's0', bw=1000,
-                      max_queue_size=maxq )
-        self.addLink('h2', 's0', bw=1.5,
-                      max_queue_size=maxq )              
+
+        self.addLink(
+            'h1', 's0',
+            bw=1000,
+            max_queue_size=maxq,
+            delay=delay,
+            )
+        self.addLink(
+            'h2', 's0',
+            bw=1.5,
+            max_queue_size=maxq,
+            delay=delay,
+            )
 
 # Simple wrappers around monitoring utilities.  You are welcome to
 # contribute neatly written (using classes) monitoring scripts for
@@ -83,23 +96,29 @@ def start_iperf(client_host, server_host):
     # For those who are curious about the -w 16m parameter, it ensures
     # that the TCP flow is not receiver window limited.  If it is,
     # there is a chance that the router buffer may not get filled up.
-    server_command = "iperf -s -w 16m"
-    client_command = f"iperf -c {server_host.IP()} -p 5001 -t 3600 -i 1 -w 16m -Z reno"
+    server_ip = server_host.IP()
+    buf_size = args.buffer_size
+
+    server_command = f"iperf -s -w {buf_size}"
+    client_command = f"iperf -c {server_ip} -p 5001 -t 3600 -i 1 -w {buf_size} -Z reno"
 
     print(f"  {server_host.name}: {server_command}")
     print(f"  {client_host.name}: {client_command}")
 
     server = server_host.popen(server_command)
+    # atrasar a iniciação do cliente para evitar erro
+    # quando o servidor é iniciado após o cliente
+    sleep(1)
     client = client_host.popen(client_command)
 
-def start_qmon(iface, interval_sec=0.1, outfile="q.txt"):
+def start_qmon(iface, interval_sec=0.01, outfile="q.txt"):
     monitor = Process(target=monitor_qlen,
                       args=(iface, interval_sec, outfile))
     monitor.start()
     return monitor
 
 def start_ping(source_host, target_host, dir="./"):
-    interval = 0.1
+    interval = 0.01
     count = int(args.time / interval)
     command = f"ping -c {count} -i {interval} {target_host.IP()} > {dir}/ping.txt"
     print("Starting ping...")
@@ -118,7 +137,7 @@ def bufferbloat():
     if not os.path.exists(args.dir):
         os.makedirs(args.dir)
     os.system("sysctl -w net.ipv4.tcp_congestion_control=%s" % args.cong)
-    topo = BBTopo(maxq=args.maxq)
+    topo = BBTopo(maxq=args.maxq, delay=args.delay)
     net = Mininet(topo=topo, host=CPULimitedHost, link=TCLink)
     net.start()
     # This dumps the topology and how nodes are interconnected through

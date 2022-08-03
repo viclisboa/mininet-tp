@@ -97,7 +97,7 @@ def parse_cpu_usage(fname, nprocessors=8):
     """Typical line looks like:
     Cpu0  :  0.0%us,  1.0%sy,  0.0%ni, 97.0%id,  0.0%wa,  0.0%hi,  2.0%si,  0.0%st
     """
-    ret = [] 
+    ret = []
     for collection in data:
         total = [0]*8
         for cpu in collection:
