@@ -94,6 +94,7 @@ class BBTopo(Topo):
 
 def start_iperf(client_host, server_host, congestion_control):
     print("Starting iperf server...")
+    # NOTA: buf_size será passado para o parametro -w, mencionado abaixo.
     # For those who are curious about the -w 16m parameter, it ensures
     # that the TCP flow is not receiver window limited.  If it is,
     # there is a chance that the router buffer may not get filled up.
@@ -128,9 +129,11 @@ def start_ping(source_host, target_host, dir="./"):
 
 def web_download(server_host,source_host,net):
     results = []
+    server_ip = server_host.IP()
+    command = 'curl -o /dev/null -s -w %%{time_total} %s/index.html' % server_ip
     for i in range(3):
-        t = source_host.popen('curl -o /dev/null -s -w %%{time_total} %s/index.html' % server_host.IP()).communicate()[0]
-    results.append(t)
+        t = source_host.popen(command).communicate()[0]
+        results.append(t)
     return results 
 
 def start_webserver(host):
@@ -139,6 +142,10 @@ def start_webserver(host):
     print(f"  {host.name}: {command}")
     host.cmd(command)
     sleep(1)
+
+def print_args():
+    d = args.__dict__
+    print("Arguments:\n", "\n".join(f"    {a}={d[a]}" for a in d), sep="")
 
 def bufferbloat():
     os.system("mn -c")
@@ -153,6 +160,8 @@ def bufferbloat():
     dumpNodeConnections(net.hosts)
     # This performs a basic all pairs ping test.
     net.pingAll()
+
+    print_args()
 
     h1 = net.get('h1')
     h2 = net.get('h2')
@@ -200,6 +209,7 @@ def bufferbloat():
     #    print(result.strip())
 
     wdt = np.array(web_download_time).astype(float)
+    print("Samples: %lf \n" % len(wdt))
     print("Mean of web download: %lf \n" % np.mean(wdt))
     print("Standard deviation: %lf \n" % np.std(wdt))
     # TODO: compute average (and standard deviation) of the fetch
