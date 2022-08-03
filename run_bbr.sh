@@ -3,17 +3,17 @@
 # Note: Mininet must be run as root.  So invoke this shell script
 # using sudo.
 
-time=90
+time=200
 bwnet=1.5
 # TODO: If you want the RTT to be 20ms what should the delay on each
 # link be?  Set this value correctly.
-delay=20
+delay=5
 
 iperf_port=5001
 
 for qsize in 20 100; do
     mn -c
-    dir=bb-q$qsize
+    dir=bb-bbr-q$qsize
 
     # TODO: Run bufferbloat.py here...
     python3 bufferbloat.py \
@@ -21,7 +21,7 @@ for qsize in 20 100; do
                 --maxq $qsize \
                 --bw-net 1500 \
                 --delay $delay \
-                --time 20 \
+                --time $time \
                 --cong bbr \
 
     # TODO: Ensure the input file names match the ones you use in

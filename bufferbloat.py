@@ -16,7 +16,6 @@ from monitor import monitor_qlen
 import sys
 import os
 import math
-import numpy as np
 
 parser = ArgumentParser(description="Bufferbloat tests")
 parser.add_argument('--bw-host', '-B',
@@ -68,21 +67,20 @@ class BBTopo(Topo):
     "Simple topology for bufferbloat experiment."
 
     def build(self, n=2, cpu=None, delay=10, maxq=None, diff=False):
-        self.addHost( 'h1', cpu=cpu )
-        self.addHost( 'h2', cpu=cpu )
+        h1 = self.addHost( 'h1', cpu=cpu )
+        h2 = self.addHost( 'h2', cpu=cpu )
 
         # Here I have created a switch.  If you change its name, its
         # interface names will change from s0-eth1 to newname-eth1.
         switch = self.addSwitch('s0')
 
         self.addLink(
-            'h1', switch,
+            h1, switch,
             bw=1000,
-            max_queue_size=maxq,
             delay=f"{delay}ms",
             )
         self.addLink(
-            'h2', switch,
+            switch,h2,
             bw=1.5,
             max_queue_size=maxq,
             delay=f"{delay}ms",
@@ -101,8 +99,8 @@ def start_iperf(client_host, server_host, congestion_control):
     server_ip = server_host.IP()
     buf_size = args.buffer_size
 
-    server_command = f"iperf -s -w {buf_size}"
-    client_command = f"iperf -c {server_ip} -p 5001 -t 3600 -i 1 -w {buf_size} -Z {congestion_control}"
+    server_command = f"iperf -s -w 16m"
+    client_command = f"iperf -c {server_ip} -t 3600"
 
     print(f"  {server_host.name}: {server_command}")
     print(f"  {client_host.name}: {client_command}")
@@ -113,27 +111,26 @@ def start_iperf(client_host, server_host, congestion_control):
     sleep(1)
     client = client_host.popen(client_command)
 
-def start_qmon(iface, interval_sec=0.01, outfile="q.txt"):
+def start_qmon(iface, interval_sec=0.1, outfile="q.txt"):
     monitor = Process(target=monitor_qlen,
                       args=(iface, interval_sec, outfile))
     monitor.start()
     return monitor
 
 def start_ping(source_host, target_host, dir="./"):
-    interval = 0.01
+    interval = 0.1
     count = int(args.time / interval)
-    command = f"ping -c {count} -i {interval} {target_host.IP()} > {dir}/ping.txt"
+    command = f"ping -i {interval} {target_host.IP()} > {dir}/ping.txt"
     print("Starting ping...")
     print(f"  {source_host.name}: {command}")
     source_host.popen(command, shell=True)
 
 def web_download(server_host,source_host,net):
-    results = []
-    server_ip = server_host.IP()
-    command = 'curl -o /dev/null -s -w %%{time_total} %s/index.html' % server_ip
+    results = 0
     for i in range(3):
-        t = source_host.popen(command).communicate()[0]
-        results.append(t)
+        t = source_host.popen('curl -o /dev/null -s -w %%{time_total} %s/index.html' % server_host.IP(),shell=True,text=True,stdout=PIPE)
+        output = t.stdout.readline()
+        results += float(output)
     return results 
 
 def start_webserver(host):
@@ -173,14 +170,13 @@ def bufferbloat():
     # interface?  The interface numbering starts with 1 and increases.
     # Depending on the order you add links to your network, this
     # number may be 1 or 2.  Ensure you use the correct number.
-    #s0-eth2
     qmon = start_qmon(iface='s0-eth2',
                       outfile='%s/q.txt' % (args.dir))
 
     # TODO: Start iperf, webservers, etc.
-    start_webserver(host=h1)
     start_iperf(server_host=h2, client_host=h1,congestion_control=args.cong)
     start_ping(source_host=h1, target_host=h2, dir=args.dir)
+    start_webserver(host=h1)
 
     # TODO: measure the time it takes to complete webpage transfer
     # from h1 to h2 (say) 3 times.  Hint: check what the following
@@ -196,7 +192,7 @@ def bufferbloat():
     web_download_time = []
     
     while True:
-        web_download_time.extend(web_download(h1,h2,net))
+        web_download_time.append(web_download(h1,h2,net))
         sleep(5)
         now = time()
         elapsed_time = now - start_time
@@ -208,10 +204,10 @@ def bufferbloat():
     #    print("Curl result:")
     #    print(result.strip())
 
-    wdt = np.array(web_download_time).astype(float)
-    print("Samples: %lf \n" % len(wdt))
-    print("Mean of web download: %lf \n" % np.mean(wdt))
-    print("Standard deviation: %lf \n" % np.std(wdt))
+    mean = sum(web_download_time) / len(web_download_time)
+    print("mean for queue size " + str(args.maxq) + ":" + str(mean))
+    stdev = sum([((x - mean) ** 2) for x in web_download_time]) ** 0.5
+    print("stdev for queue size " + str(args.maxq) + ":" + str(stdev))
     # TODO: compute average (and standard deviation) of the fetch
     # times.  You don't need to plot them.  Just note it in your
     # README and explain.
@@ -226,6 +222,7 @@ def bufferbloat():
     # Ensure that all processes you create within Mininet are killed.
     # Sometimes they require manual killing.
     Popen("pgrep -f webserver3.py | xargs kill -9", shell=True).wait()
+    Popen("pkill -f -9 ping",shell=True).wait()
 
 if __name__ == "__main__":
     bufferbloat()
