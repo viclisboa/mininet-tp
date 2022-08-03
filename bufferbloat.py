@@ -78,13 +78,13 @@ class BBTopo(Topo):
 # contribute neatly written (using classes) monitoring scripts for
 # Mininet!
 
-def start_iperf(client_host, server_host):
+def start_iperf(client_host, server_host, congestion_control):
     print("Starting iperf server...")
     # For those who are curious about the -w 16m parameter, it ensures
     # that the TCP flow is not receiver window limited.  If it is,
     # there is a chance that the router buffer may not get filled up.
     server_command = "iperf -s -w 16m"
-    client_command = f"iperf -c {server_host.IP()} -p 5001 -t 3600 -i 1 -w 16m -Z reno"
+    client_command = f"iperf -c {server_host.IP()} -p 5001 -t 3600 -i 1 -w 16m -Z {congestion_control}"
 
     print(f"  {server_host.name}: {server_command}")
     print(f"  {client_host.name}: {client_command}")
@@ -143,7 +143,7 @@ def bufferbloat():
 
     # TODO: Start iperf, webservers, etc.
     start_webserver(host=h1)
-    start_iperf(server_host=h2, client_host=h1)
+    start_iperf(server_host=h2, client_host=h1,congestion_control=args.cong)
     start_ping(source_host=h1, target_host=h2, dir=args.dir)
 
     # TODO: measure the time it takes to complete webpage transfer

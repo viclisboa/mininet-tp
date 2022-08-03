@@ -22,11 +22,11 @@ for qsize in 20 100; do
                 --bw-net 1500 \
                 --delay $delay \
                 --time 20 \
-                --cong reno \
+                --cong bbr \
 
     # TODO: Ensure the input file names match the ones you use in
     # bufferbloat.py script.  Also ensure the plot file names match
     # the required naming convention when submitting your tarball.
-    python3 plot_queue.py -f $dir/q.txt -o reno-buffer-q$qsize.png
-    python3 plot_ping.py -f $dir/ping.txt -o reno-rtt-q$qsize.png
+    python3 plot_queue.py -f $dir/q.txt -o bbr-buffer-q$qsize.png
+    python3 plot_ping.py -f $dir/ping.txt -o bbr-rtt-q$qsize.png
 done
