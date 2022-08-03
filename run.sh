@@ -3,15 +3,15 @@
 # Note: Mininet must be run as root.  So invoke this shell script
 # using sudo.
 
-time=90
+time=30
 bwnet=1.5
 # TODO: If you want the RTT to be 20ms what should the delay on each
 # link be?  Set this value correctly.
-delay=20
+delay=5
 
 iperf_port=5001
 
-for qsize in 20 100; do
+for qsize in 100; do
     mn -c
     dir=bb-q$qsize
 
@@ -21,7 +21,7 @@ for qsize in 20 100; do
                 --maxq $qsize \
                 --bw-net 1500 \
                 --delay $delay \
-                --time 20 \
+                --time $time \
                 --cong reno \
 
     # TODO: Ensure the input file names match the ones you use in

@@ -16,6 +16,7 @@ from monitor import monitor_qlen
 import sys
 import os
 import math
+import numpy as np
 
 parser = ArgumentParser(description="Bufferbloat tests")
 parser.add_argument('--bw-host', '-B',
@@ -69,10 +70,10 @@ class BBTopo(Topo):
         # interface names will change from s0-eth1 to newname-eth1.
         switch = self.addSwitch('s0')
     
-        self.addLink('h1', 's0', bw=1000,
-                      max_queue_size=maxq )
-        self.addLink('h2', 's0', bw=1.5,
-                      max_queue_size=maxq )              
+        self.addLink('h1', switch, bw=1000,
+                      max_queue_size=maxq,delay=f"{delay}ms")
+        self.addLink(switch,'h2', bw=1.5,
+                      max_queue_size=maxq,delay=f"{delay}ms")              
 
 # Simple wrappers around monitoring utilities.  You are welcome to
 # contribute neatly written (using classes) monitoring scripts for
@@ -106,8 +107,15 @@ def start_ping(source_host, target_host, dir="./"):
     print(f"  {source_host.name}: {command}")
     source_host.popen(command, shell=True)
 
+def web_download(server_host,source_host,net):
+    results = []
+    for i in range(3):
+	    t = source_host.popen('curl -o /dev/null -s -w %%{time_total} %s/index.html' % server_host.IP()).communicate()[0]
+    results.append(t)
+    return results 
+
 def start_webserver(host):
-    command = 'cd ./http/; nohup python3 ./webserver3.py &'
+    command = 'nohup python3 ./webserver3.py &'
     print("Starting webserver...")
     print(f"  {host.name}: {command}")
     host.cmd(command)
@@ -118,7 +126,7 @@ def bufferbloat():
     if not os.path.exists(args.dir):
         os.makedirs(args.dir)
     os.system("sysctl -w net.ipv4.tcp_congestion_control=%s" % args.cong)
-    topo = BBTopo(maxq=args.maxq)
+    topo = BBTopo(maxq=args.maxq,delay=args.delay)
     net = Mininet(topo=topo, host=CPULimitedHost, link=TCLink)
     net.start()
     # This dumps the topology and how nodes are interconnected through
@@ -157,19 +165,24 @@ def bufferbloat():
     # Hint: have a separate function to do this and you may find the
     # loop below useful.
     start_time = time()
+    web_download_time = []
+    
     while True:
-        # do the measurement (say) 3 times.
+        web_download_time.extend(web_download(h1,h2,net))
         sleep(5)
         now = time()
         elapsed_time = now - start_time
         if elapsed_time >= args.time:
             break
         print("%.1fs left..." % (args.time - elapsed_time))
-        h2.sendCmd('curl -o /dev/null -s -w %{time_total} 10.0.0.1')
-        result = h2.waitOutput()
-        print("Curl result:")
-        print(result.strip())
+    #    h2.sendCmd('curl -o /dev/null -s -w %{time_total} 10.0.0.1')
+    #    result = h2.waitOutput()
+    #    print("Curl result:")
+    #    print(result.strip())
 
+    wdt = np.array(web_download_time).astype(float)
+    print("Mean of web download: %lf \n" % np.mean(wdt))
+    print("Standard deviation: %lf \n" % np.std(wdt))
     # TODO: compute average (and standard deviation) of the fetch
     # times.  You don't need to plot them.  Just note it in your
     # README and explain.
