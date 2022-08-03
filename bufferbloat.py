@@ -16,6 +16,7 @@ from monitor import monitor_qlen
 import sys
 import os
 import math
+import numpy as np
 
 parser = ArgumentParser(description="Bufferbloat tests")
 parser.add_argument('--bw-host', '-B',
@@ -75,23 +76,23 @@ class BBTopo(Topo):
         switch = self.addSwitch('s0')
 
         self.addLink(
-            'h1', 's0',
+            'h1', switch,
             bw=1000,
             max_queue_size=maxq,
-            delay=delay,
+            delay=f"{delay}ms",
             )
         self.addLink(
-            'h2', 's0',
+            'h2', switch,
             bw=1.5,
             max_queue_size=maxq,
-            delay=delay,
+            delay=f"{delay}ms",
             )
 
 # Simple wrappers around monitoring utilities.  You are welcome to
 # contribute neatly written (using classes) monitoring scripts for
 # Mininet!
 
-def start_iperf(client_host, server_host):
+def start_iperf(client_host, server_host, congestion_control):
     print("Starting iperf server...")
     # For those who are curious about the -w 16m parameter, it ensures
     # that the TCP flow is not receiver window limited.  If it is,
@@ -100,7 +101,7 @@ def start_iperf(client_host, server_host):
     buf_size = args.buffer_size
 
     server_command = f"iperf -s -w {buf_size}"
-    client_command = f"iperf -c {server_ip} -p 5001 -t 3600 -i 1 -w {buf_size} -Z reno"
+    client_command = f"iperf -c {server_ip} -p 5001 -t 3600 -i 1 -w {buf_size} -Z {congestion_control}"
 
     print(f"  {server_host.name}: {server_command}")
     print(f"  {client_host.name}: {client_command}")
@@ -125,8 +126,15 @@ def start_ping(source_host, target_host, dir="./"):
     print(f"  {source_host.name}: {command}")
     source_host.popen(command, shell=True)
 
+def web_download(server_host,source_host,net):
+    results = []
+    for i in range(3):
+        t = source_host.popen('curl -o /dev/null -s -w %%{time_total} %s/index.html' % server_host.IP()).communicate()[0]
+    results.append(t)
+    return results 
+
 def start_webserver(host):
-    command = 'cd ./http/; nohup python3 ./webserver3.py &'
+    command = 'nohup python3 ./webserver3.py &'
     print("Starting webserver...")
     print(f"  {host.name}: {command}")
     host.cmd(command)
@@ -162,7 +170,7 @@ def bufferbloat():
 
     # TODO: Start iperf, webservers, etc.
     start_webserver(host=h1)
-    start_iperf(server_host=h2, client_host=h1)
+    start_iperf(server_host=h2, client_host=h1,congestion_control=args.cong)
     start_ping(source_host=h1, target_host=h2, dir=args.dir)
 
     # TODO: measure the time it takes to complete webpage transfer
@@ -176,19 +184,24 @@ def bufferbloat():
     # Hint: have a separate function to do this and you may find the
     # loop below useful.
     start_time = time()
+    web_download_time = []
+    
     while True:
-        # do the measurement (say) 3 times.
+        web_download_time.extend(web_download(h1,h2,net))
         sleep(5)
         now = time()
         elapsed_time = now - start_time
         if elapsed_time >= args.time:
             break
         print("%.1fs left..." % (args.time - elapsed_time))
-        h2.sendCmd('curl -o /dev/null -s -w %{time_total} 10.0.0.1')
-        result = h2.waitOutput()
-        print("Curl result:")
-        print(result.strip())
+    #    h2.sendCmd('curl -o /dev/null -s -w %{time_total} 10.0.0.1')
+    #    result = h2.waitOutput()
+    #    print("Curl result:")
+    #    print(result.strip())
 
+    wdt = np.array(web_download_time).astype(float)
+    print("Mean of web download: %lf \n" % np.mean(wdt))
+    print("Standard deviation: %lf \n" % np.std(wdt))
     # TODO: compute average (and standard deviation) of the fetch
     # times.  You don't need to plot them.  Just note it in your
     # README and explain.
