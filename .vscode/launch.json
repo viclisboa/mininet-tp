@@ -19,6 +19,22 @@
                 "--delay", "20",
                 "--time", "150"
             ]
+        },
+        {
+            "name": "Python: bufferbloat.py q100",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/bufferbloat.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "sudo": true,
+            "args": [
+                "--dir", "bb-q100",
+                "--maxq", "100",
+                "--bw-net", "1500",
+                "--delay", "20",
+                "--time", "250"
+            ]
         }
     ]
 }
